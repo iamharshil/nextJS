@@ -1,38 +1,85 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+### ENV Files
 
-## Getting Started
+- ship
+  .env.development
+  .env.production
 
-First, run the development server:
+- but keep secret
+  .env.local
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
+- if all 3 has same key then local will override both and based on command production or development will run
+EX - `npm run dev || npm run build`
+<hr />
+
+### GetServerSideProps
+
+- codedamn.com/dynamic -> getServerSideProps
+  codedamn.com/static -> No getServerSideProps
+
+- on build next marks
+- SSR -> /dynamic (runs getServerSideProps login and render javascirpt code)
+- static -> static (it will throw already generated page or html code)
+
+- on build it will remember which files is using server side props
+- then every instruction inside getServerSideProps will be executed first
+
+- dynamic is similar to php
+
+```php
+<?php
+// ...connect db
+// ... fetch data
+// ... display data
+>
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+<hr />
+- SSR works similar to it
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+```js
+export async function getServerSideProps(context) {
+  const db = await Database();
+  const rows = await User.find({});
+  return {
+    props: { rows },
+  };
+}
+```
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+<hr />
+- Cons:
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+- now each time database gets connected and also gets data fetch each time that's mean it is resource intensive.
+- Dynamic ssr get query of url with it also, to access `js context.query.dynamicname `
+- I can redirect in ssr return instead of returning props
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+### GetStaticProps
 
-## Learn More
+- build pages on build time
+- 20 static routes, 35 dynamic routes (eCommerce store -> 35 product)
+- Incrementally/lazily build website.
+- store/1 -> getStaticProps -> saved for other people (cache it in our server).
+- store/99 -> serverd immediately as static page
+- on build time -> static html + json
+- we can use db calls, network req without beign cors binded .... require file with common js syntax or dynamic import
+- static render has revalidate with props in return which takes number as value and it will build page again after that time
 
-To learn more about Next.js, take a look at the following resources:
+- live: 100k/seconds -> ssr -> 100k Req/database -bad
+- live: 100k/seconds -> ssg(1 sec revalidate) -> 1 Req/database - super good
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+// last revalidate 0 now: 0 -> now - last < 10
+// last revalidate 0 now: 5 -> now - last < 10
+// last revalidate 0 now: 9 -> now - last < 10
+// last revalidate 100 now: 102 -> 102 - 100 < 10 skip
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+<!-- * no other req nothing -->
 
-## Deploy on Vercel
+- v: 1, 2, 3, 4 -> each new build is new version
+- req: 1 2 3 4 5 6 7 8
+- time 0 5 8 8 10 12 15
+- ver: 1 1 1 1 1 - 2 2 ....
+- it will at most generate only 1 page in 10 seconds not every 10 seconds
+- if req is stop then it will stop work
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+### GetStaticPath
